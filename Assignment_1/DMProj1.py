@@ -42,7 +42,7 @@ def PreProcessing (data):
     print("Drop AUCGUART due to insufficient and data amount and leaky data")
     print("Drop WheelTypeID due to it being a duplicate of WheelType")
     print("Drop ForSale due to data skew")
-    print("Drop PurchaseDate due to it being a duplicate of PurchaseTimestamp")
+    print("Drop PurchaseDate due to it being a duplicate of PurchaseTimeStamp")
     data.drop(['PRIMEUNIT', 'AUCGUART', 'WheelTypeID', 'ForSale', 'PurchaseDate'], 
               axis=1, 
               inplace=True)
@@ -81,8 +81,11 @@ def PreProcessing (data):
     # Replace binary columns with 1s and 0s
     data['Auto'].replace({'MANUAL' : 0, 'AUTO' : 1}, inplace=True)
     
+    # Remove NOT AVAIL in color and place it in the NaN section
+    data['Color'].replace({'NOT AVAIL': np.nan}, inplace = True)
     
-    """
+    
+    """ I'll have to check with teach if this is correct
     #This is the significance test for VNST
     # Check to see if VNST is a statisically significant variable
     # Create a distribution of IsBuyBad for VNST
@@ -104,19 +107,43 @@ def PreProcessing (data):
     data['Size'] = tempSize[0] # Save the temp var back into data
     data['Body'] = tempSize[1] # Save the temp var back into data
     data['Body'].fillna('CITY', inplace = True) # Assume any other cars are 'City'
+    data.loc[data.Size == 'VAN', 'Body'] = 'Van' # Convert Van into a body type
+    data.loc[data.Size == 'VAN'] =  np.nan # Take van away from size, shouldn't matter once OH is done
     
     
     # Replace all non 0, 1 values in IsOnlineSale to 1
     maskOnlineSale = data['IsOnlineSale'] != 0 # Any value that isn't 0 will be set to 1
     data.loc[maskOnlineSale, 'IsOnlineSale'] = 1 # Set the values to 1
     
+    
+    # Converting the TimeStamp into Quater
+    Quater = [] # Create empty string
+    for i, _ in enumerate(data.PurchaseTimestamp): # Loop over the entire dataset
+        # Convert the epoch datetime into the quater and append to list
+        Quater.append(pd.Timestamp(data.PurchaseTimestamp.loc[i], unit = 's').quarter)        
+    data['Quater'] = Quater # Create the column with list
+    data.drop('PurchaseTimestamp', axis=1, inplace = True) # Drop old TimeStamp
+    
+    
+    
+    """ This will take care of any Null values we don't specifically take care of
+    by replaceing the missing data with data from the same distibution"""
+    for i in data.columns: # Loop over dataset
+        if data[i].isna().any(): # Check to see if there is a NaN is the feature
+            dist = data[i].value_counts(normalize=True) # Find the distrabution of the column
+            missing = data[i].isna() # Find where the NaN are
+            # Replace the NaNs with values from the same distrabution of the column
+            data.loc[missing, i] = np.random.choice(dist.index, size=len(data[missing]),p=dist.values)       
+            print("Converted all of " + i + "s missing values into the same distrubution")
+    
+    
     """ This should be the last thing done """
     # Convert all categorical variables into one hot representations
     
     print("The number of features before one hot encoding is " + str(data.shape[1]))
-    data_OH = pd.get_dummies(data, columns = ['Auction', 'Make', 'Color', 'VehYear'
-                                              'Nationality', 'Size', 'Body', 'TopThreeAmericanName', 'WheelType'])
-    data_OH.rename({'Size_VAN' : 'Body_VAN'}) # Standardize the naming convention
+    data_OH = pd.get_dummies(data, columns = ['Auction', 'Make', 'Color', 'VehYear', 
+                                              'Nationality', 'Size', 'Body', 'TopThreeAmericanName', 
+                                              'WheelType', 'Quater'])
     print("The number of features after one hot encoding is " + str(data_OH.shape[1]))
        
     
