@@ -14,6 +14,13 @@ import scipy.stats as stats
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# Import ML libraries
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import classification_report, accuracy_score
+from sklearn.model_selection import GridSearchCV
+rs = 10 # Set a random state const
+
 
 # Ignore Warnings
 import warnings
@@ -108,7 +115,7 @@ def PreProcessing (data):
     data['Body'] = tempSize[1] # Save the temp var back into data
     data['Body'].fillna('CITY', inplace = True) # Assume any other cars are 'City'
     data.loc[data.Size == 'VAN', 'Body'] = 'Van' # Convert Van into a body type
-    data.loc[data.Size == 'VAN'] =  np.nan # Take van away from size, shouldn't matter once OH is done
+    data.loc[data.Size == 'VAN', 'Size'] =  np.nan # Take van away from size, shouldn't matter once OH is done
     
     
     # Replace all non 0, 1 values in IsOnlineSale to 1
@@ -149,6 +156,7 @@ def PreProcessing (data):
     
     return data, data_OH
 
+
 # Define a function to plot catgorical variables with relation to another cat, default is IsBadBuy
 def categoricalPlot(cat, cat2 = 'IsBadBuy'): # Cat is the carigorical as a string i.e 'Size'
     pd.crosstab(data[cat],data[cat2]).plot(kind="bar")
@@ -168,12 +176,7 @@ def Question1(data):
     print ("Questin 1.1 :")
     print( kickPersentage, "%")
     
-    
-
-    
-
 
 ### RUN THE OUTPUT ###
 data, data_OH = PreProcessing(data)
 Question1(data)
-categoricalPlot('Size')
